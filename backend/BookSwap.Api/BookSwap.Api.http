@@ -1,0 +1,32 @@
+@host = http://localhost:8080
+@token = paste-jwt-here
+
+### Health
+GET {{host}}/health
+
+### Login as demo user
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "anna@bookswap.local",
+  "password": "User123"
+}
+
+### Catalog
+GET {{host}}/api/books?page=1&pageSize=12&sort=newest
+
+### Genres
+GET {{host}}/api/genres
+
+### Current profile
+GET {{host}}/api/auth/me
+Authorization: Bearer {{token}}
+
+### My books
+GET {{host}}/api/books/mine
+Authorization: Bearer {{token}}
+
+### My exchanges
+GET {{host}}/api/exchanges
+Authorization: Bearer {{token}}

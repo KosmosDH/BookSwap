@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bookswap}
+      POSTGRES_USER: ${POSTGRES_USER:-bookswap}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bookswap}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bookswap} -d ${POSTGRES_DB:-bookswap}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ./backend/BookSwap.Api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-bookswap};Username=${POSTGRES_USER:-bookswap};Password=${POSTGRES_PASSWORD:-bookswap}
+      ConnectionStrings__Redis: redis:6379
+      Jwt__Issuer: BookSwap.Api
+      Jwt__Audience: BookSwap.Client
+      Jwt__Key: ${JWT_KEY:-CHANGE_ME_BOOKSWAP_DEVELOPMENT_SECRET_12345678901234567890}
+      Jwt__ExpiresMinutes: 720
+      Cloudinary__CloudName: ${CLOUDINARY_CLOUD_NAME:-}
+      Cloudinary__UploadPreset: ${CLOUDINARY_UPLOAD_PRESET:-}
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploaded_images:/app/wwwroot/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploaded_images:
